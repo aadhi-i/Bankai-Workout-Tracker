@@ -1,5 +1,10 @@
-const CACHE = "iron-v1";
-const ASSETS = ["./", "./index.html", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png"];
+const CACHE = "iron-v3";
+const BASE = "/Bankai-Workout-Tracker/";
+const ASSETS = [
+  BASE, BASE + "index.html", BASE + "manifest.json",
+  BASE + "icons/icon-192.png", BASE + "icons/icon-512.png",
+  BASE + "icons/icon-192-maskable.png", BASE + "icons/icon-512-maskable.png"
+];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
