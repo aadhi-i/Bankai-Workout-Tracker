@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="description" content="BANKAI — a minimal calendar workout tracker." />
+<title>BANKAI — Workout Tracker</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0a0a0a;
+    --surface:#141414;
+    --surface-2:#1b1b1b;
+    --border:#262626;
+    --text:#f5f5f5;
+    --text-dim:#8f8f8f;
+    --text-faint:#525252;
+    --red:#ff2b43;
+    --red-deep:#c4001a;
+    --red-dim:rgba(255,43,67,0.14);
+    --radius:16px;
+    --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:#000;
+    font-family:var(--font);
+    color:var(--text);
+    font-variant-numeric:tabular-nums;
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior:none;
+  }
+  #app{
+    max-width:430px;
+    margin:0 auto;
+    min-height:100dvh;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* ---------- Header ---------- */
+  header.app-header{
+    padding:22px 20px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-shrink:0;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:9px;
+  }
+  .brand-mark{
+    width:22px;height:22px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .brand-mark svg{width:100%;height:100%;}
+  .brand-name{
+    font-weight:800;
+    font-size:17px;
+    letter-spacing:0.06em;
+  }
+  .brand-name .accent{color:var(--red);}
+
+  .streak-pill{
+    display:flex;align-items:center;gap:6px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    padding:6px 11px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:600;
+    color:var(--text-dim);
+  }
+  .streak-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0;}
+
+  main{
+    flex:1;
+    overflow-y:auto;
+    padding-bottom:96px;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  /* ---------- Screens ---------- */
+  .screen{display:none;padding:0 20px;}
+  .screen.active{display:block;}
+
+  /* ---------- Month nav ---------- */
+  .month-nav{
+    display:flex;align-items:center;justify-content:space-between;
+    margin:4px 0 18px;
+  }
+  .month-nav .title{
+    font-size:22px;font-weight:800;letter-spacing:-0.01em;
+  }
+  .month-nav .title span{color:var(--text-dim);font-weight:600;}
+  .nav-btns{display:flex;gap:8px;}
+  .nav-btn{
+    width:34px;height:34px;border-radius:10px;
+    background:var(--surface);border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--text);cursor:pointer;
+  }
+  .nav-btn:active{background:var(--surface-2);}
+  .nav-btn svg{width:15px;height:15px;}
+
+  /* ---------- Calendar grid ---------- */
+  .weekday-row{
+    display:grid;grid-template-columns:repeat(7,1fr);
+    margin-bottom:8px;
+  }
+  .weekday-row div{
+    text-align:center;font-size:11px;font-weight:700;
+    color:var(--text-faint);letter-spacing:0.04em;
+    text-transform:uppercase;
+  }
+  .cal-grid{
+    display:grid;grid-template-columns:repeat(7,1fr);
+    row-gap:6px;
+  }
+  .cal-cell{
+    aspect-ratio:1/1;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+  .cal-cell .num-wrap{
+    width:38px;height:38px;
+    border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    flex-direction:column;
+    font-size:14px;font-weight:600;
+    color:var(--text);
+    position:relative;
+    cursor:pointer;
+    border:1px solid transparent;
+    transition:background .12s ease, border-color .12s ease;
+  }
+  .cal-cell.outside .num-wrap{color:var(--text-faint);opacity:0.4;}
+  .cal-cell.today .num-wrap{color:var(--red);font-weight:800;}
+  .cal-cell.selected .num-wrap{
+    background:var(--red);
+    color:#fff;
+    border-color:var(--red);
+  }
+  .cal-cell.has-plan:not(.selected) .num-wrap{
+    background:var(--surface);
+    border-color:var(--border);
+  }
+  .cal-cell .dot{
+    position:absolute;
+    bottom:3px;
+    width:4px;height:4px;border-radius:50%;
+    background:var(--red);
+  }
+  .cal-cell.selected .dot{background:#fff;}
+  .cal-cell.done .dot{background:#3ddc84;}
+  .cal-cell.selected.done .dot{background:#fff;}
+
+  /* ---------- Day panel ---------- */
+  .day-panel{
+    margin-top:22px;
+    border-top:1px solid var(--border);
+    padding-top:18px;
+  }
+  .day-panel-head{
+    display:flex;align-items:baseline;justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .day-panel-head h2{
+    font-size:16px;margin:0;font-weight:700;
+  }
+  .day-panel-head .sub{
+    font-size:12px;color:var(--text-dim);font-weight:500;
+  }
+  .add-link{
+    background:none;border:none;color:var(--red);
+    font-family:var(--font);font-weight:700;font-size:13px;
+    cursor:pointer;display:flex;align-items:center;gap:5px;
+    padding:6px 2px;
+  }
+  .add-link svg{width:14px;height:14px;}
+
+  .empty-state{
+    text-align:center;
+    padding:38px 10px;
+    color:var(--text-faint);
+  }
+  .empty-state .ico{
+    width:40px;height:40px;margin:0 auto 12px;color:var(--text-faint);opacity:0.6;
+  }
+  .empty-state p{margin:0;font-size:13px;font-weight:500;line-height:1.5;}
+  .empty-state .hint{color:var(--red);font-weight:700;}
+
+  /* ---------- Exercise card ---------- */
+  .ex-list{display:flex;flex-direction:column;gap:10px;}
+  .ex-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:14px 14px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .ex-check{
+    width:24px;height:24px;border-radius:50%;
+    border:2px solid var(--border);
+    flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:background .12s, border-color .12s;
+  }
+  .ex-check svg{width:12px;height:12px;opacity:0;color:#000;transition:opacity .12s;}
+  .ex-card.done .ex-check{background:var(--red);border-color:var(--red);}
+  .ex-card.done .ex-check svg{opacity:1;color:#0a0a0a;}
+  .ex-body{flex:1;min-width:0;}
+  .ex-name{
+    font-size:14.5px;font-weight:700;margin-bottom:4px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .ex-card.done .ex-name{color:var(--text-faint);text-decoration:line-through;}
+  .ex-meta{display:flex;gap:6px;flex-wrap:wrap;}
+  .chip{
+    font-size:11px;font-weight:700;
+    color:var(--text-dim);
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    padding:3px 8px;border-radius:6px;
+    letter-spacing:0.01em;
+  }
+  .chip.weight{color:var(--red);}
+  .ex-del{
+    width:28px;height:28px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--text-faint);cursor:pointer;
+    border-radius:8px;
+  }
+  .ex-del:active{background:var(--surface-2);color:var(--red);}
+  .ex-del svg{width:16px;height:16px;}
+
+  /* ---------- Upcoming screen ---------- */
+  .screen-title{
+    font-size:22px;font-weight:800;margin:4px 0 2px;letter-spacing:-0.01em;
+  }
+  .screen-sub{
+    font-size:12.5px;color:var(--text-dim);margin-bottom:18px;font-weight:500;
+  }
+  .up-group{margin-bottom:22px;}
+  .up-date{
+    display:flex;align-items:center;gap:8px;
+    margin-bottom:10px;
+  }
+  .up-date .badge{
+    font-size:11px;font-weight:800;letter-spacing:0.04em;
+    color:var(--bg);background:var(--text);
+    padding:3px 8px;border-radius:6px;text-transform:uppercase;
+  }
+  .up-date.is-today .badge{background:var(--red);color:#fff;}
+  .up-date .label{font-size:13px;font-weight:700;color:var(--text-dim);}
+
+  /* ---------- FAB ---------- */
+  .fab{
+    position:absolute;
+    right:18px;bottom:94px;
+    width:54px;height:54px;border-radius:50%;
+    background:var(--red);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 24px rgba(255,43,67,0.35);
+    cursor:pointer;border:none;
+    z-index:20;
+    transition:transform .12s ease;
+  }
+  .fab:active{transform:scale(0.92);}
+  .fab svg{width:22px;height:22px;color:#fff;}
+  .fab.hidden{display:none;}
+
+  /* ---------- Bottom nav ---------- */
+  nav.tabbar{
+    position:absolute;left:0;right:0;bottom:0;
+    display:flex;
+    background:rgba(10,10,10,0.92);
+    backdrop-filter:blur(14px);
+    border-top:1px solid var(--border);
+    padding:10px 20px calc(12px + env(safe-area-inset-bottom));
+    gap:6px;
+    z-index:15;
+  }
+  .tab-btn{
+    flex:1;
+    background:none;border:none;
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    color:var(--text-faint);
+    font-family:var(--font);
+    cursor:pointer;padding:4px 0;
+  }
+  .tab-btn svg{width:21px;height:21px;}
+  .tab-btn span{font-size:10.5px;font-weight:700;letter-spacing:0.02em;}
+  .tab-btn.active{color:var(--red);}
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:absolute;inset:0;
+    background:rgba(0,0,0,0.6);
+    display:flex;align-items:flex-end;
+    z-index:30;
+    opacity:0;pointer-events:none;
+    transition:opacity .18s ease;
+  }
+  .overlay.open{opacity:1;pointer-events:auto;}
+  .sheet{
+    width:100%;
+    background:var(--surface);
+    border-top:1px solid var(--border);
+    border-radius:22px 22px 0 0;
+    padding:10px 20px calc(22px + env(safe-area-inset-bottom));
+    transform:translateY(100%);
+    transition:transform .22s cubic-bezier(.32,.72,0,1);
+    max-height:88dvh;
+    overflow-y:auto;
+  }
+  .overlay.open .sheet{transform:translateY(0);}
+  .sheet-handle{
+    width:36px;height:4px;border-radius:2px;
+    background:var(--border);
+    margin:6px auto 16px;
+  }
+  .sheet h3{font-size:17px;font-weight:800;margin:0 0 18px;}
+  .field{margin-bottom:16px;}
+  .field label{
+    display:block;font-size:11.5px;font-weight:700;
+    color:var(--text-dim);margin-bottom:8px;
+    text-transform:uppercase;letter-spacing:0.04em;
+  }
+  .field input[type=text], .field input[type=number]{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:11px;
+    padding:13px 14px;
+    color:var(--text);
+    font-family:var(--font);
+    font-size:15px;font-weight:600;
+    outline:none;
+  }
+  .field input:focus{border-color:var(--red);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .stepper{
+    display:flex;align-items:center;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:11px;
+    overflow:hidden;
+  }
+  .stepper button{
+    width:38px;flex-shrink:0;
+    background:none;border:none;color:var(--text);
+    font-size:18px;font-weight:700;
+    cursor:pointer;padding:12px 0;
+  }
+  .stepper button:active{background:var(--border);}
+  .stepper input{
+    flex:1;min-width:0;text-align:center;
+    background:none;border:none;color:var(--text);
+    font-family:var(--font);font-size:15px;font-weight:700;
+    outline:none;padding:12px 0;
+    -moz-appearance:textfield;
+  }
+  .stepper input::-webkit-outer-spin-button,
+  .stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .unit-toggle{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:3px;}
+  .unit-toggle button{
+    flex:1;border:none;background:none;color:var(--text-dim);
+    font-family:var(--font);font-weight:700;font-size:13px;
+    padding:9px 0;border-radius:8px;cursor:pointer;
+  }
+  .unit-toggle button.active{background:var(--red);color:#fff;}
+
+  .sheet-actions{display:flex;gap:10px;margin-top:6px;}
+  .btn{
+    flex:1;border:none;border-radius:12px;
+    padding:14px 0;font-family:var(--font);
+    font-weight:800;font-size:14.5px;cursor:pointer;
+    letter-spacing:0.01em;
+  }
+  .btn-ghost{background:var(--surface-2);color:var(--text-dim);border:1px solid var(--border);}
+  .btn-primary{background:var(--red);color:#fff;}
+  .btn-primary:active, .btn-ghost:active{opacity:0.8;}
+
+  ::-webkit-scrollbar{width:0;height:0;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="2" y="10.5" width="3" height="3" rx="1" fill="#f5f5f5"/><rect x="6" y="8" width="2.4" height="8" rx="1" fill="#f5f5f5"/><rect x="9.5" y="11" width="5" height="2" fill="#ff2b43"/><rect x="15.6" y="8" width="2.4" height="8" rx="1" fill="#f5f5f5"/><rect x="19" y="10.5" width="3" height="3" rx="1" fill="#f5f5f5"/></svg>
+      </div>
+      <div class="brand-name">BANKAI</div>
+    </div>
+    <div class="streak-pill" id="streakPill"><span class="dot"></span><span id="streakText">0 planned</span></div>
+  </header>
+
+  <main>
+    <!-- CALENDAR SCREEN -->
+    <section class="screen active" id="screen-calendar">
+      <div class="month-nav">
+        <div class="title" id="monthTitle">Month <span>Year</span></div>
+        <div class="nav-btns">
+          <button class="nav-btn" id="prevMonth" aria-label="Previous month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>
+          </button>
+          <button class="nav-btn" id="nextMonth" aria-label="Next month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="weekday-row">
+        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+
+      <div class="day-panel">
+        <div class="day-panel-head">
+          <div>
+            <h2 id="dayPanelTitle">Today</h2>
+            <div class="sub" id="dayPanelSub"></div>
+          </div>
+          <button class="add-link" id="addFromPanel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            ADD
+          </button>
+        </div>
+        <div class="ex-list" id="dayExList"></div>
+      </div>
+    </section>
+
+    <!-- UPCOMING SCREEN -->
+    <section class="screen" id="screen-upcoming">
+      <div class="screen-title">Upcoming</div>
+      <div class="screen-sub" id="upcomingSub">What's ahead this week</div>
+      <div id="upcomingList"></div>
+    </section>
+  </main>
+
+  <button class="fab" id="fabAdd" aria-label="Add exercise">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+
+  <nav class="tabbar">
+    <button class="tab-btn active" data-tab="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      <span>Calendar</span>
+    </button>
+    <button class="tab-btn" data-tab="upcoming">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Upcoming</span>
+    </button>
+  </nav>
+
+  <!-- ADD/EDIT MODAL -->
+  <div class="overlay" id="overlay">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <h3 id="sheetTitle">Add exercise</h3>
+      <form id="exForm">
+        <div class="field">
+          <label>Exercise</label>
+          <input type="text" id="fName" placeholder="e.g. Barbell Squat" autocomplete="off" required />
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Sets</label>
+            <div class="stepper">
+              <button type="button" data-step="-1" data-target="fSets">−</button>
+              <input type="number" id="fSets" value="3" min="1" max="20" />
+              <button type="button" data-step="1" data-target="fSets">+</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Reps</label>
+            <div class="stepper">
+              <button type="button" data-step="-1" data-target="fReps">−</button>
+              <input type="number" id="fReps" value="10" min="1" max="100" />
+              <button type="button" data-step="1" data-target="fReps">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Weight</label>
+            <div class="stepper">
+              <button type="button" data-step="-2.5" data-target="fWeight">−</button>
+              <input type="number" id="fWeight" value="20" min="0" max="500" step="0.5" />
+              <button type="button" data-step="2.5" data-target="fWeight">+</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Unit</label>
+            <div class="unit-toggle" id="unitToggle">
+              <button type="button" data-unit="kg" class="active">kg</button>
+              <button type="button" data-unit="lb">lb</button>
+            </div>
+          </div>
+        </div>
+        <div class="sheet-actions">
+          <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveBtn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- Utilities ---------------- */
+  const pad = n => String(n).padStart(2,"0");
+  const toKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const fromKey = k => { const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d); };
+  const sameDay = (a,b) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  const todayDate = () => { const t=new Date(); t.setHours(0,0,0,0); return t; };
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const WEEKDAYS_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+  /* ---------------- State ---------------- */
+  const STORAGE_KEY = "iron.workoutData.v1";
+  let data = {};
+  try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e){ data = {}; }
+
+  function save(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e){}
+  }
+
+  let viewDate = todayDate();       // month currently displayed (day irrelevant)
+  let selectedDate = todayDate();   // date selected in the day panel
+  let editingId = null;             // exercise id currently being edited, or null = adding
+
+  /* ---------------- DOM refs ---------------- */
+  const monthTitle = document.getElementById("monthTitle");
+  const calGrid = document.getElementById("calGrid");
+  const dayPanelTitle = document.getElementById("dayPanelTitle");
+  const dayPanelSub = document.getElementById("dayPanelSub");
+  const dayExList = document.getElementById("dayExList");
+  const upcomingList = document.getElementById("upcomingList");
+  const upcomingSub = document.getElementById("upcomingSub");
+  const streakText = document.getElementById("streakText");
+  const overlay = document.getElementById("overlay");
+  const exForm = document.getElementById("exForm");
+  const sheetTitle = document.getElementById("sheetTitle");
+  const fName = document.getElementById("fName");
+  const fSets = document.getElementById("fSets");
+  const fReps = document.getElementById("fReps");
+  const fWeight = document.getElementById("fWeight");
+  const unitToggle = document.getElementById("unitToggle");
+  let currentUnit = "kg";
+
+  /* ---------------- Rendering: Calendar ---------------- */
+  function renderCalendar(){
+    monthTitle.innerHTML = `${MONTHS[viewDate.getMonth()]} <span>${viewDate.getFullYear()}</span>`;
+    calGrid.innerHTML = "";
+
+    const year = viewDate.getFullYear(), month = viewDate.getMonth();
+    const firstOfMonth = new Date(year, month, 1);
+    const startOffset = firstOfMonth.getDay(); // 0=Sun
+    const gridStart = new Date(year, month, 1 - startOffset);
+    const today = todayDate();
+
+    for(let i=0;i<42;i++){
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate()+i);
+      const key = toKey(d);
+      const entries = data[key] || [];
+      const cell = document.createElement("div");
+      cell.className = "cal-cell";
+      if(d.getMonth() !== month) cell.classList.add("outside");
+      if(sameDay(d, today)) cell.classList.add("today");
+      if(sameDay(d, selectedDate)) cell.classList.add("selected");
+      if(entries.length){
+        cell.classList.add("has-plan");
+        if(entries.every(e=>e.done)) cell.classList.add("done");
+      }
+      cell.innerHTML = `<div class="num-wrap">${d.getDate()}${entries.length ? '<span class="dot"></span>' : ''}</div>`;
+      cell.addEventListener("click", ()=>{
+        selectedDate = d;
+        renderCalendar();
+        renderDayPanel();
+      });
+      calGrid.appendChild(cell);
+    }
+  }
+
+  /* ---------------- Rendering: Day panel ---------------- */
+  function fmtWeekdayDate(d){
+    const today = todayDate();
+    if(sameDay(d, today)) return "Today";
+    const tmr = new Date(today); tmr.setDate(tmr.getDate()+1);
+    if(sameDay(d, tmr)) return "Tomorrow";
+    return WEEKDAYS_LONG[d.getDay()];
+  }
+
+  function renderDayPanel(){
+    const key = toKey(selectedDate);
+    const entries = data[key] || [];
+    dayPanelTitle.textContent = fmtWeekdayDate(selectedDate);
+    dayPanelSub.textContent = `${MONTHS[selectedDate.getMonth()]} ${selectedDate.getDate()}, ${selectedDate.getFullYear()} · ${entries.length} exercise${entries.length!==1?'s':''}`;
+
+    if(!entries.length){
+      dayExList.innerHTML = `
+        <div class="empty-state">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
+          <p>Nothing planned for this day.<br/><span class="hint">Tap ADD</span> to build the workout.</p>
+        </div>`;
+      return;
+    }
+
+    dayExList.innerHTML = "";
+    entries.forEach(ex=>{
+      const card = document.createElement("div");
+      card.className = "ex-card" + (ex.done ? " done" : "");
+      card.innerHTML = `
+        <div class="ex-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <div class="ex-body">
+          <div class="ex-name">${escapeHtml(ex.name)}</div>
+          <div class="ex-meta">
+            <span class="chip">${ex.sets} × ${ex.reps}</span>
+            <span class="chip weight">${ex.weight} ${ex.unit}</span>
+          </div>
+        </div>
+        <div class="ex-del" data-id="${ex.id}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+        </div>
+      `;
+      card.querySelector(".ex-check").addEventListener("click", ()=>{
+        ex.done = !ex.done;
+        save();
+        renderDayPanel();
+        renderCalendar();
+      });
+      card.querySelector(".ex-del").addEventListener("click", (e)=>{
+        e.stopPropagation();
+        data[key] = data[key].filter(x=>x.id !== ex.id);
+        if(!data[key].length) delete data[key];
+        save();
+        renderDayPanel();
+        renderCalendar();
+        renderUpcoming();
+      });
+      dayExList.appendChild(card);
+    });
+  }
+
+  function escapeHtml(s){
+    const div = document.createElement("div");
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  /* ---------------- Rendering: Upcoming ---------------- */
+  function renderUpcoming(){
+    const today = todayDate();
+    const keys = Object.keys(data)
+      .filter(k => (data[k]||[]).length)
+      .filter(k => fromKey(k) >= today)
+      .sort((a,b)=> fromKey(a) - fromKey(b));
+
+    const totalExercises = keys.reduce((sum,k)=> sum + data[k].length, 0);
+    upcomingSub.textContent = keys.length
+      ? `${keys.length} day${keys.length!==1?'s':''} planned · ${totalExercises} exercise${totalExercises!==1?'s':''}`
+      : "Nothing planned yet";
+
+    if(!keys.length){
+      upcomingList.innerHTML = `
+        <div class="empty-state" style="padding-top:60px;">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
+          <p>No workouts on the horizon.<br/><span class="hint">Go to Calendar</span> to plan your next session.</p>
+        </div>`;
+      return;
+    }
+
+    upcomingList.innerHTML = "";
+    keys.forEach(k=>{
+      const d = fromKey(k);
+      const isToday = sameDay(d, today);
+      const group = document.createElement("div");
+      group.className = "up-group";
+      const dateLabel = `${WEEKDAYS_LONG[d.getDay()].slice(0,3)}, ${MONTHS[d.getMonth()].slice(0,3)} ${d.getDate()}`;
+      group.innerHTML = `
+        <div class="up-date ${isToday?'is-today':''}">
+          <span class="badge">${isToday ? 'Today' : dateLabel}</span>
+          ${isToday ? `<span class="label">${dateLabel}</span>` : ''}
+        </div>
+        <div class="ex-list"></div>
+      `;
+      const list = group.querySelector(".ex-list");
+      data[k].forEach(ex=>{
+        const card = document.createElement("div");
+        card.className = "ex-card" + (ex.done ? " done" : "");
+        card.innerHTML = `
+          <div class="ex-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <div class="ex-body">
+            <div class="ex-name">${escapeHtml(ex.name)}</div>
+            <div class="ex-meta">
+              <span class="chip">${ex.sets} × ${ex.reps}</span>
+              <span class="chip weight">${ex.weight} ${ex.unit}</span>
+            </div>
+          </div>
+        `;
+        card.querySelector(".ex-check").addEventListener("click", ()=>{
+          ex.done = !ex.done;
+          save();
+          renderUpcoming();
+          renderCalendar();
+          if(sameDay(selectedDate, d)) renderDayPanel();
+        });
+        list.appendChild(card);
+      });
+      upcomingList.appendChild(group);
+    });
+  }
+
+  /* ---------------- Streak pill ---------------- */
+  function renderStreak(){
+    const today = todayDate();
+    const keys = Object.keys(data).filter(k => (data[k]||[]).length && fromKey(k) >= today);
+    streakText.textContent = `${keys.length} day${keys.length!==1?'s':''} planned`;
+  }
+
+  /* ---------------- Modal (add/edit) ---------------- */
+  function openModal(){
+    editingId = null;
+    sheetTitle.textContent = "Add exercise";
+    fName.value = "";
+    fSets.value = 3;
+    fReps.value = 10;
+    fWeight.value = 20;
+    currentUnit = "kg";
+    [...unitToggle.children].forEach(b=>b.classList.toggle("active", b.dataset.unit===currentUnit));
+    overlay.classList.add("open");
+    setTimeout(()=>fName.focus(), 250);
+  }
+  function closeModal(){
+    overlay.classList.remove("open");
+  }
+
+  document.getElementById("fabAdd").addEventListener("click", openModal);
+  document.getElementById("addFromPanel").addEventListener("click", openModal);
+  document.getElementById("cancelBtn").addEventListener("click", closeModal);
+  overlay.addEventListener("click", (e)=>{ if(e.target === overlay) closeModal(); });
+
+  unitToggle.addEventListener("click", (e)=>{
+    const btn = e.target.closest("button");
+    if(!btn) return;
+    currentUnit = btn.dataset.unit;
+    [...unitToggle.children].forEach(b=>b.classList.toggle("active", b===btn));
+  });
+
+  document.querySelectorAll(".stepper button[data-step]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const target = document.getElementById(btn.dataset.target);
+      const step = parseFloat(btn.dataset.step);
+      const min = parseFloat(target.min || 0);
+      let val = (parseFloat(target.value)||0) + step;
+      if(val < min) val = min;
+      target.value = (step % 1 !== 0 || target.step === "0.5") ? val.toFixed(1).replace(/\.0$/,"") : val;
+    });
+  });
+
+  exForm.addEventListener("submit", (e)=>{
+    e.preventDefault();
+    const name = fName.value.trim();
+    if(!name) return;
+    const key = toKey(selectedDate);
+    if(!data[key]) data[key] = [];
+    data[key].push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+      name,
+      sets: parseInt(fSets.value)||1,
+      reps: parseInt(fReps.value)||1,
+      weight: parseFloat(fWeight.value)||0,
+      unit: currentUnit,
+      done: false
+    });
+    save();
+    closeModal();
+    renderCalendar();
+    renderDayPanel();
+    renderUpcoming();
+    renderStreak();
+  });
+
+  /* ---------------- Month navigation ---------------- */
+  document.getElementById("prevMonth").addEventListener("click", ()=>{
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1);
+    renderCalendar();
+  });
+  document.getElementById("nextMonth").addEventListener("click", ()=>{
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1);
+    renderCalendar();
+  });
+
+  /* ---------------- Tabs ---------------- */
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      const tab = btn.dataset.tab;
+      document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+      document.getElementById(`screen-${tab}`).classList.add("active");
+      document.getElementById("fabAdd").classList.toggle("hidden", tab !== "calendar");
+      if(tab === "upcoming") renderUpcoming();
+    });
+  });
+
+  /* ---------------- Init ---------------- */
+  renderCalendar();
+  renderDayPanel();
+  renderUpcoming();
+  renderStreak();
+
+  /* ---------------- Service worker ---------------- */
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", ()=>{
+      navigator.serviceWorker.register("sw.js").catch(()=>{ /* ignore in sandboxed preview */ });
+    });
+  }
+})();
+</script>
+</body>
+</html>
